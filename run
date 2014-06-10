@@ -31,7 +31,7 @@ then
 	TAILPID=$!
 	trap '' TERM
 else
-	CMD=/bin/zsh
+	CMD=/bin/bash
 	STDIN=/dev/stdin
 	STDOUT=/dev/stdout
 	STDERR=/dev/stderr
