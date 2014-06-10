@@ -11,7 +11,7 @@ mkdir /dev/shm
 mount -t tmpfs none /dev/shm
 mount -t sysfs none /sys
 mount -t tmpfs none /sys/fs/cgroup
-for SUBSYS in memory devices cpuset
+for SUBSYS in memory devices cpuset cpu
 do
 mkdir /sys/fs/cgroup/$SUBSYS
 mount -t cgroup -o $SUBSYS none /sys/fs/cgroup/$SUBSYS
