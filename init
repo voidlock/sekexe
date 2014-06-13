@@ -8,6 +8,7 @@ mount -t proc none /proc
 mkdir /dev/pts
 mount -t devpts none /dev/pts
 mkdir /dev/shm
+mknod -m 444 /dev/urandom c 1 9
 mount -t tmpfs none /dev/shm
 mount -t sysfs none /sys
 mount -t tmpfs none /sys/fs/cgroup
