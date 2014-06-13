@@ -33,7 +33,9 @@ then
 	STDOUT=/dev/null
 	STDERR=/dev/null
 	touch $LOGDIR/output
-	tail -f $LOGDIR/output &
+	if [ "$VERBOSE" = 1 ]; then
+		tail -f $LOGDIR/output &
+	fi
 	TAILPID=$!
 	trap '' TERM
 else
