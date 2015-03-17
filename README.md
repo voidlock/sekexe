@@ -1,5 +1,5 @@
 # SEparate KErnel eXEcution
-[![Build Status](https://travis-ci.org/spotify/sekexe.svg?branch=master)](https://travis-ci.org/spotify/sekexe)
+[![Build Status](https://travis-ci.org/cptactionhank/sekexe.svg?branch=master)](https://travis-ci.org/cptactionhank/sekexe)
 
 SEKEXE uses User Mode Linux to run a Linux process within a "sub kernel",
 and retrieve its output and exit status (as if it was running as a normal
