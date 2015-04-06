@@ -96,10 +96,5 @@ ip route add default via 10.1.1.254
 	exec >>/var/log/output
 	exec 2>>/var/log/output
 }
-# sh /var/log/cmd
-# "$@"
-exec "${*}"
-# echo $? >/var/log/status
-# This will make sure that the main "tail" process had the opportunity
-# to display everything before being killed by UML misbehavior.
-# sleep 1
+
+/usr/bin/env sh -c "${*}"
