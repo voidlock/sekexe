@@ -49,7 +49,7 @@ debug()     { ([ "${LOG_LEVEL}" -ge 7 ] && echo "$(_fmt debug) ${*}" 1>&2) 		|| 
 cd "$WORKDIR"
 
 save_and_shutdown() {
-	local exit_code="$?"
+	exit_code="$?"
 	debug "User-Mode Linux, exit status: $exit_code"
 	# Capture and save the commands exit code and save it in the $LOGDIR
 	echo "$exit_code" > "$LOGDIR/status"
@@ -97,5 +97,5 @@ ip route add default via 10.1.1.254
 	exec 2>>/var/log/output
 }
 
-/usr/bin/env sh -c "$*"
+exec /usr/bin/env sh -c "$*"
 # echo $? >/var/log/status
