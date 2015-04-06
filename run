@@ -151,7 +151,7 @@ if [ ! -z "$HOST_IP" ]; then
 	SLIRP_HOST="$HOST_IP"
 fi
 
-if [ -n "$SLIRP_PORTS" ] && [ "x$SLIRP_HOST" = "x" ]; then
+if [ -n "$SLIRP_PORTS" ] && [ -z "$SLIRP_HOST" ]; then
   emergency "The HOST_IP must be defined to setup redirects with SLIRP_PORTS."
   exit 255
 fi
