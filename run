@@ -43,7 +43,7 @@ function _fmt ()      {
 	fi
 	echo -e "$(date +"%Y-%m-%d %H:%M:%S") ${color}$(printf "[%5s]" "${lvl}")${color_reset}";
 }
-emergency() {                              echo "$(_fmt emergency) ${*}" 1>&2 || true; exit 1; }
+emergency() {                              echo "$(_fmt emergency) ${*}" 1>&2 || true; exit 123; }
 alert()     { ([ "${LOG_LEVEL}" -ge 1 ] && echo "$(_fmt alert) ${*}" 1>&2) 		|| true; }
 critical()  { ([ "${LOG_LEVEL}" -ge 2 ] && echo "$(_fmt critical) ${*}" 1>&2) || true; }
 error()     { ([ "${LOG_LEVEL}" -ge 3 ] && echo "$(_fmt error) ${*}" 1>&2) 		|| true; }
