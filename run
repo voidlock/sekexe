@@ -11,10 +11,10 @@ done
 
 if [ "$2" ]
 then
-	shift
+	# shift
 	echo "Extraneous arguments: $*"
 	echo "Try to enclose them within quotes?"
-	exit 201
+	# exit 201
 fi
 
 if [ -n "$SLIRP_PORTS" ] && [ -z "$HOST_IP" ]
