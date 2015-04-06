@@ -98,4 +98,4 @@ ip route add default via 10.1.1.254
 }
 # sh /var/log/cmd
 # "$@"
-sh -c "$@"
+sh -c "$*"
