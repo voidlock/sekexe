@@ -45,4 +45,33 @@ testGuestReachableViaSlirp()
     /bin/kill $UML_PID >/dev/null 2>/dev/null
 }
 
+
+test_true()
+{
+    ./run true
+
+    assertNotEquals "" 0 $?
+}
+
+test_false()
+{
+    ./run false
+
+    assertNotEquals "" 1 $?
+}
+
+test_exit_2()
+{
+    ./run exit 2
+
+    assertNotEquals "" 2 $?
+}
+
+test_exit_25()
+{
+    ./run exit 25
+
+    assertNotEquals "" 25 $?
+}
+
 . /usr/bin/shunit2
