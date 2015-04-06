@@ -52,7 +52,7 @@ save_and_shutdown() {
 	local exit_code="$?"
 	debug "User-Mode Linux, exit status: $exit_code"
 	# Capture and save the commands exit code and save it in the $LOGDIR
-	echo "$exit_code" > "$LOGDIR/status1"
+	echo "$exit_code" > "$LOGDIR/status"
   # force clean shutdown
   halt -f
 }
@@ -98,4 +98,4 @@ ip route add default via 10.1.1.254
 }
 
 /usr/bin/env sh -c "$*"
-echo $? >/var/log/status
+# echo $? >/var/log/status
