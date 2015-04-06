@@ -162,6 +162,7 @@ CMD="${*}"
 ### Runtime
 #####################################################################
 
+
 # Exit on error. Append ||true if you expect an error.
 # set -e is safer than #!/bin/bash -e because that is neutralised if
 # someone runs your script like `bash yourscript.sh`
@@ -198,14 +199,14 @@ else
 	TAILPID=""
 fi
 
-# Execute `$CMD` in User-Mode Linux
-debug "Going to execute command: ${CMD}"
-"$INITDIR/uml" quiet \
-	root=/dev/root rootflags=/ rootfstype=hostfs rw \
-  mem="$(grep "MemTotal" "/proc/meminfo" | awk '{ print $2 }')K" \
+cat "/etc/resolv.conf" > "$LOGDIR/resolv.conf"
+
+echo "$CMD" > $LOGDIR/cmd
+INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
+"$INITDIR/uml" quiet mem=512m rootfstype=hostfs rootflags=/ ro \
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
-	init="$INITDIR/init ${CMD}" \
-	TERM="$TERM" LOGDIR="$LOGDIR"
+	init="$INITDIR/init $*" LOGDIR="$LOGDIR" \
+	<"$STDIN" >"$STDOUT" 2>"$STDERR"
 
 # Due to a weird behavior of usermodelinux, sometimes it will kill the
 # whole process group, and we won't have to kill tail. Duh.
@@ -214,7 +215,6 @@ debug "Going to execute command: ${CMD}"
 
 STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
+[ "$DEBUG" ] || rm -rf "$LOGDIR"
 [ "$STATUS" ] && exit "$STATUS"
-
-# default to exit error
-exit 255
+exit 300
