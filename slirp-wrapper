@@ -1,18 +1,21 @@
-#!/bin/sh
+#!/bin/bash
 
-if [ -z "$SLIRP_PORTS" ]
-then
-    exec slirp-fullbolt "$@"
-else
-    tmp=$(mktemp /tmp/slirp.XXXX)
+SLIRP_OPTIONS=()
 
-    echo 'exec slirp-fullbolt "host addr $HOST_IP" \\' > $tmp
-    for i in $SLIRP_PORTS
-    do
-        echo '"redir '$i' 10.1.1.1:'$i'"' \\ >> $tmp
-    done
-
-    echo '"$@"' >> $tmp
-
-    exec /bin/sh $tmp "$@"
+# backwards compatability
+if [ ! -z "$HOST_IP" ]; then
+	echo "DEPRECATED USE OF ENVIRONMENT VARIABLE, CONSIDER SWITCHING TO SLIRP_HOST AS SOON AS POSSIBLE."
+	SLIRP_HOST="$HOST_IP"
 fi
+
+if [ ! -z "$SLIRP_HOST" ]; then
+	SLIRP_OPTIONS+=("host addr $SLIRP_HOST")
+fi
+
+if [ ! -z "$SLIRP_PORTS" ]; then
+	for i in $SLIRP_PORTS; do
+		SLIRP_OPTIONS+=("redir $i 10.1.1.1:$i")
+	done
+fi
+
+exec slirp-fullbolt "${SLIRP_OPTIONS[@]}" "$@"
