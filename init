@@ -98,7 +98,7 @@ ip route add default via 10.1.1.254
 }
 # sh /var/log/cmd
 # "$@"
-sh -c "$*"
+sh -c "$@"
 echo $? >/var/log/status
 # This will make sure that the main "tail" process had the opportunity
 # to display everything before being killed by UML misbehavior.
