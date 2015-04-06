@@ -63,5 +63,5 @@ INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
 [ "$DEBUG" ] || rm -rf "$LOGDIR"
-[ "$STATUS" ] && echo "exiting with uml exit code" && exit "$STATUS"
+[ "$STATUS" ] && exit "$STATUS"
 exit 300
