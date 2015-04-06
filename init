@@ -52,7 +52,7 @@ save_and_shutdown() {
 	local exit_code="$?"
 	debug "User-Mode Linux, exit status: $exit_code"
 	# Capture and save the commands exit code and save it in the $LOGDIR
-	echo "$exit_code" > "$LOGDIR/status_foo"
+	echo "$exit_code" > "$LOGDIR/status"
   # force clean shutdown
   halt -f
 }
@@ -98,8 +98,8 @@ ip route add default via 10.1.1.254
 }
 # sh /var/log/cmd
 # "$@"
-sh -c "$@"
-echo $? >/var/log/status
+exec "${*}"
+# echo $? >/var/log/status
 # This will make sure that the main "tail" process had the opportunity
 # to display everything before being killed by UML misbehavior.
-sleep 1
+# sleep 1
