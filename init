@@ -49,10 +49,6 @@ debug()     { ([ "${LOG_LEVEL}" -ge 7 ] && echo "$(_fmt debug) ${*}" 1>&2) 		|| 
 cd "$WORKDIR"
 
 save_and_shutdown() {
-	exit_code="$?"
-	debug "User-Mode Linux, exit status: $exit_code"
-	# Capture and save the commands exit code and save it in the $LOGDIR
-	echo "$exit_code" > "$LOGDIR/status"
   # force clean shutdown
   halt -f
 }
@@ -60,31 +56,45 @@ save_and_shutdown() {
 # make sure we shut down cleanly
 trap save_and_shutdown EXIT INT TERM
 
-export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-mount -t tmpfs none /tmp
-mount -t tmpfs none /var/run
-mount -t hostfs -o $LOGDIR none /var/log
-mount -t tmpfs none /var/lib/docker
-mount -t proc none /proc
-mkdir /dev/pts
-mount -t devpts none /dev/pts
-mkdir /dev/shm
-mknod -m 444 /dev/urandom c 1 9
-mount -t tmpfs none /dev/shm
-mount -t sysfs none /sys
-mount -t tmpfs none /sys/fs/cgroup
-for SUBSYS in memory devices cpuset cpu
-do
-mkdir /sys/fs/cgroup/$SUBSYS
-mount -t cgroup -o $SUBSYS none /sys/fs/cgroup/$SUBSYS
-done
-echo 1 > /proc/sys/net/ipv4/ip_forward
-echo 0 > /proc/sys/kernel/printk
+# configure path to include /usr/local
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# can't do much without proc!
+mount -t proc none "/proc"
+
+# pseudo-terminal devices
+mkdir -p "/dev/pts"
+mount -t devpts none "/dev/pts"
+
+# shared memory a good idea
+mkdir -p "/dev/shm"
+mount -t tmpfs none "/dev/shm"
+
+# sysfs a good idea
+mount -t sysfs none "/sys"
+
+# pidfiles and such like
+mkdir -p "/var/run"
+mount -t tmpfs none "/var/run"
+
+# takes the pain out of cgroups
+cgroups-mount
+
+# some storage for docker
+mkdir -p "/var/lib/docker"
+mount none "/var/lib/docker" -t hostfs -o "/var/lib/docker"
+mount none "/etc/docker" -t hostfs -o "/etc/docker"
+
+mount -t hostfs -o "$LOGDIR" none "/var/log"
+
+# configure networking
 ip addr add 127.0.0.1 dev lo
 ip link set lo up
 ip addr add 10.1.1.1/24 dev eth0
 ip link set eth0 up
 ip route add default via 10.1.1.254
+echo "1" > "/proc/sys/net/ipv4/ip_forward"
+
 # This is to handle when /etc/resolv.conf -> /run/resolvconf/resolv.conf
 [ -L /etc/resolv.conf ] && {
 	mkdir -p "$(dirname "$(readlink --canonicalize-missing "/etc/resolv.conf")")"
@@ -96,6 +106,7 @@ ip route add default via 10.1.1.254
 	exec >>/var/log/output
 	exec 2>>/var/log/output
 }
-
-exec /usr/bin/env sh -c "$*"
-# echo $? >/var/log/status
+# execute the command
+/usr/bin/env sh -c "$*"
+# preserve commands exit code
+echo $? >/var/log/status
