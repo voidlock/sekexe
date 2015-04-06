@@ -21,7 +21,7 @@ oneTimeSetUp()
 
 testSlirpRedirNeedsHostIp()
 {
-    HOST_IP='' SLIRP_PORTS=12345 ./run true
+    HOST_IP='' SLIRP_PORTS=12345 ./run "true"
 
     assertNotEquals "Providing SLIRP_PORTS should require HOST_IP" 0 $?
 }
@@ -33,45 +33,45 @@ testGuestReachableViaSlirp()
         grep 'inet addr' | awk -F: '{print $2}' | awk '{print $1}')
     port=12345
 
-    HOST_IP="$host_ip" SLIRP_PORTS=$port ./run nc -l $port &
+    HOST_IP="$host_ip" SLIRP_PORTS=$port ./run "nc -l $port" &
     UML_PID=$!
 
     # give uml a little time to start
     sleep 5
 
-    nc -w 5 -z $host_ip $port
+    nc -w 5 -z "$host_ip" "$port"
     assertEquals "Service should be reachable via slirp" 0 $?
 
-    /bin/kill $UML_PID >/dev/null 2>/dev/null
+    /bin/kill "$UML_PID" >/dev/null 2>/dev/null
 }
 
 
 test_true()
 {
-    ./run true
+    ./run "true"
 
-    assertNotEquals "" 0 $?
+    assertNotEquals "Should exit with code 0" 0 $?
 }
 
 test_false()
 {
-    ./run false
+    ./run "false"
 
-    assertNotEquals "" 1 $?
+    assertNotEquals "Should exit with code 1" 1 $?
 }
 
 test_exit_2()
 {
-    ./run exit 2
+    ./run "exit 2"
 
-    assertNotEquals "" 2 $?
+    assertNotEquals "Should exit with code 2" 2 $?
 }
 
 test_exit_25()
 {
-    ./run exit 25
+    ./run "exit 25"
 
-    assertNotEquals "" 25 $?
+    assertNotEquals "Should exit with code 25" 25 $?
 }
 
 . /usr/bin/shunit2
