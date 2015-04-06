@@ -50,28 +50,28 @@ test_true()
 {
     ./run "true"
     local exit_code="$?"
-    assertEquals "Should exit with code 0 and was $exit_code" 0 $exit_code
+    assertEquals "Should exit with code 0" 0 $exit_code
 }
 
 test_false()
 {
     ./run "false"
     local exit_code="$?"
-    assertEquals "Should exit with code 0 and was $exit_code" 1 $exit_code
+    assertEquals "Should exit with code 1" 1 $exit_code
 }
 
 test_exit_2()
 {
     ./run "exit 2"
     local exit_code="$?"
-    assertEquals "Should exit with code 0 and was $exit_code" 2 $exit_code
+    assertEquals "Should exit with code 2" 2 $exit_code
 }
 
 test_exit_25()
 {
     ./run "exit 25"
     local exit_code="$?"
-    assertEquals "Should exit with code 0 and was $exit_code" 25 $exit_code
+    assertEquals "Should exit with code 25" 25 $exit_code
 }
 
 . /usr/bin/shunit2

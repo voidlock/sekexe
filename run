@@ -5,7 +5,7 @@ for R in $REQUIREMENTS
 do
 	[ -x "$R" ] || {
 		echo "Requirement $R not found. Aborting."
-		exit 1
+		exit 200
 	}
 done
 
@@ -14,13 +14,13 @@ then
 	shift
 	echo "Extraneous arguments: $*"
 	echo "Try to enclose them within quotes?"
-	exit 255
+	exit 201
 fi
 
 if [ -n "$SLIRP_PORTS" ] && [ -z "$HOST_IP" ]
 then
     echo "The HOST_IP must be defined to setup redirects with SLIRP_PORTS."
-    exit 255
+    exit 202
 fi
 
 LOGDIR=/tmp/log.$$
@@ -63,5 +63,5 @@ INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
 [ "$DEBUG" ] || rm -rf "$LOGDIR"
-[ "$STATUS" ] && exit "$STATUS"
-exit 255
+[ "$STATUS" ] && echo "exiting with uml exit code" && exit "$STATUS"
+exit 300
