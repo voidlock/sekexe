@@ -69,7 +69,7 @@ test_exit_2()
 
 test_exit_25()
 {
-    ./run "exit 25"
+    ./run exit 25
     local exit_code="$?"
     assertEquals "Should exit with code 25" 25 $exit_code
 }
