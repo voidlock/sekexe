@@ -33,7 +33,7 @@ testGuestReachableViaSlirp()
         grep 'inet addr' | awk -F: '{print $2}' | awk '{print $1}')
     port=12345
 
-    HOST_IP="$host_ip" SLIRP_PORTS=$port ./run "nc -l $port" &
+    HOST_IP="$host_ip" SLIRP_PORTS=$port ./run nc -l $port &
     UML_PID=$!
 
     # give uml a little time to start
