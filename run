@@ -3,7 +3,7 @@
 REQUIREMENTS="/sbin/ip /usr/bin/slirp-fullbolt"
 for R in $REQUIREMENTS
 do
-	[ -x $R ] || {
+	[ -x "$R" ] || {
 		echo "Requirement $R not found. Aborting."
 		exit 1
 	}
@@ -46,22 +46,22 @@ else
 	TAILPID=""
 fi
 
-cat /etc/resolv.conf > $LOGDIR/resolv.conf
+cat "/etc/resolv.conf" > "$LOGDIR/resolv.conf"
 
 echo "$CMD" > $LOGDIR/cmd
 INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 "$INITDIR/uml" quiet mem=512m rootfstype=hostfs rootflags=/ ro \
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
 	init="$INITDIR/init $*" LOGDIR="$LOGDIR" \
-	<$STDIN >$STDOUT 2>$STDERR
+	<"$STDIN" >"$STDOUT" 2>"$STDERR"
 
 # Due to a weird behavior of usermodelinux, sometimes it will kill the
 # whole process group, and we won't have to kill tail. Duh.
 [ "$TAILPID" ] && [ -d /proc/$TAILPID ] &&
-	/bin/kill $TAILPID >/dev/null 2>/dev/null
+	/bin/kill "$TAILPID" >"/dev/null" 2>"/dev/null"
 
 STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
 [ "$DEBUG" ] || rm -rf "$LOGDIR"
-[ "$STATUS" ] && exit $STATUS
+[ "$STATUS" ] && exit "$STATUS"
 exit 255
