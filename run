@@ -217,4 +217,4 @@ STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
 [ "$DEBUG" ] || rm -rf "$LOGDIR"
 [ "$STATUS" ] && exit "$STATUS"
-exit 300
+exit 120
