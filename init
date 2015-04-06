@@ -96,16 +96,16 @@ ip route add default via 10.1.1.254
 echo "1" > "/proc/sys/net/ipv4/ip_forward"
 
 # This is to handle when /etc/resolv.conf -> /run/resolvconf/resolv.conf
-[ -L /etc/resolv.conf ] && {
+if [ -L "/etc/resolv.conf" ]; then
 	mkdir -p "$(dirname "$(readlink --canonicalize-missing "/etc/resolv.conf")")"
-	[ -f /etc/resolv.conf ] || {
-		cat /var/log/resolv.conf > /etc/resolv.conf
-	}
-}
-[ -f /var/log/output ] && {
-	exec >>/var/log/output
-	exec 2>>/var/log/output
-}
+	if [ ! -f "/etc/resolv.conf" ]; then
+		cat "/var/log/resolv.conf" > "/etc/resolv.conf"
+	fi
+fi
+if [ -f "/var/log/output" ]; then
+	exec >> "/var/log/output"
+	exec 2>> "/var/log/output"
+fi
 # execute the command
 /usr/bin/env sh -c "$*"
 # preserve commands exit code
