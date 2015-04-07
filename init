@@ -58,7 +58,7 @@ trap save_and_shutdown EXIT INT TERM
 
 # configure path to include /usr/local
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-
+set -x
 # can't do much without proc!
 mount -t proc none "/proc"
 
@@ -83,9 +83,10 @@ cgroups-mount
 # some storage for docker
 mkdir -p "/var/lib/docker"
 mount none "/var/lib/docker" -t hostfs -o "/var/lib/docker" \
-	|| mount -t tmpfs -o size=8g tmpfs /var/lib/docker
+	|| mount -t tmpfs -o size=8g tmpfs "/var/lib/docker"
+
 mount none "/etc/docker" -t hostfs -o "/etc/docker" \
-	|| mount -t tmpfs -o size=8g tmpfs /etc/docker
+	|| mount -t tmpfs -o size=8g tmpfs "/etc/docker"
 
 mount -t hostfs -o "$LOGDIR" none "/var/log"
 
