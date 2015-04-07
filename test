@@ -73,4 +73,13 @@ test_exit_25()
     assertEquals "Should exit with code 25" 25 $exit_code
 }
 
+test_running_docker()
+{
+    ./run -d docker -d -D -H tcp://0.0.0.0:2375 &
+    while ! docker info; do sleep 10; done
+
+    local exit_code="$?"
+    assertEquals "Should successful connect to docker" 0 $exit_code
+}
+
 . /usr/bin/shunit2
