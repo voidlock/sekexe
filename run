@@ -164,11 +164,24 @@ CMD="${*}"
 ### Runtime
 #####################################################################
 
-LOGDIR=/tmp/log.$$
-mkdir $LOGDIR
+# Exit on error. Append ||true if you expect an error.
+# set -e is safer than #!/bin/bash -e because that is neutralised if
+# someone runs your script like `bash yourscript.sh`
+set -o errexit
+set -o nounset
 
-if [ "$1" ]
-then
+# Bash will remember & return the highest exitcode in a chain of pipes.
+# This way you can catch the error in case mysqldump fails in `mysqldump |gzip`
+set -o pipefail
+
+# Setup logging directory and files
+debug "Preparing log directory: $LOGDIR"
+mkdir -p "$LOGDIR"
+cp "/etc/resolv.conf" "$LOGDIR/resolv.conf"
+echo "$CMD" > "$LOGDIR/cmd"
+
+# if [ "$1" ]
+# then
 	# CMD="$*"
 	STDIN=/dev/null
 	STDOUT=/dev/null
@@ -179,31 +192,32 @@ then
 	fi
 	TAILPID=$!
 	trap '' TERM
-else
-	# CMD=/bin/bash
-	STDIN=/dev/stdin
-	STDOUT=/dev/stdout
-	STDERR=/dev/stderr
-	TAILPID=""
-fi
+# else
+# 	# CMD=/bin/bash
+# 	STDIN=/dev/stdin
+# 	STDOUT=/dev/stdout
+# 	STDERR=/dev/stderr
+# 	TAILPID=""
+# fi
 
 cat "/etc/resolv.conf" > "$LOGDIR/resolv.conf"
 
-echo "$CMD" > $LOGDIR/cmd
-
+debug "Going to execute command: ${CMD}"
+# Execute `$CMD` in User-Mode Linux
 INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 "$INITDIR/uml" quiet mem=512m rootfstype=hostfs rootflags=/ ro \
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
-	init="$INITDIR/init $*" LOGDIR="$LOGDIR" \
+	init="$INITDIR/init ${CMD}" LOGDIR="$LOGDIR" \
 	<"$STDIN" >"$STDOUT" 2>"$STDERR"
 
-# Due to a weird behavior of usermodelinux, sometimes it will kill the
+# Due to a weird behavior of user-mode linux, sometimes it will kill the
 # whole process group, and we won't have to kill tail. Duh.
 [ "$TAILPID" ] && [ -d /proc/$TAILPID ] &&
 	/bin/kill "$TAILPID" >"/dev/null" 2>"/dev/null"
 
 STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
-[ "$DEBUG" ] || rm -rf "$LOGDIR"
 [ "$STATUS" ] && exit "$STATUS"
+
+# default to exit error
 exit 255
