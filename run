@@ -206,10 +206,11 @@ echo "${CMD}" > "${LOGDIR}/cmd"
 # fi
 
 # Execute `$CMD` in User-Mode Linux
+# root="/dev/root" rootflags="/" rootfstype="hostfs" rw \
 debug "Going to execute command: ${CMD}"
 INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 "$INITDIR/uml" quiet \
-	root="/dev/root" rootflags="/" rootfstype="hostfs" rw \
+  rootfstype="hostfs" rootflags="/" ro \
 	mem="$(grep "MemTotal" "/proc/meminfo" | awk '{ print $2 }')K" \
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
 	init="$INITDIR/init ${CMD}" \
