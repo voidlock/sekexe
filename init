@@ -102,9 +102,11 @@ if [ -L "/etc/resolv.conf" ]; then
 		cat "/var/log/resolv.conf" > "/etc/resolv.conf"
 	fi
 fi
-if [ -f "/var/log/output" ]; then
-	exec >> "/var/log/output"
-	exec 2>> "/var/log/output"
+if [ -f "/var/log/stdout" ]; then
+	exec >> "/var/log/stdout"
+fi
+if [ -f "/var/log/stderr" ]; then
+	exec 2>> "/var/log/stderr"
 fi
 # execute the command
 /usr/bin/env sh -c "$*"

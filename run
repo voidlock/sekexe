@@ -191,9 +191,9 @@ if [ "$1" ]; then
 	touch $LOGDIR/stderr
 	# if [ "$VERBOSE" = 1 ]; then
 	tail -f $LOGDIR/stdout &
-	PIDS+=($!)
+	PIDS+=("$!")
 	tail -f $LOGDIR/stderr &
-	PIDS+=($!)
+	PIDS+=("$!")
 	# fi
 	# TAILPID=$!
 	# trap '' TERM
