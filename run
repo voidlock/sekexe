@@ -69,7 +69,7 @@ cleanup_before_exit() {
   debug "Deleting $LOGDIR"
   rm -rf "$LOGDIR" 2> /dev/null
   # killing auxilary processes
-  kill "$@"
+  kill "${PIDS[@]}"
 }
 trap cleanup_before_exit EXIT
 
