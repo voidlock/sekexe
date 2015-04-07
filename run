@@ -184,7 +184,7 @@ cp "/etc/resolv.conf" "${LOGDIR}/resolv.conf"
 echo "${CMD}" > "${LOGDIR}/cmd"
 
 # if [ "$1" ]; then
-	STDIN=/dev/null
+	STDIN=/dev/stdin
 	STDOUT=/dev/null
 	STDERR=/dev/null
 	touch $LOGDIR/stdout
