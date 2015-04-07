@@ -79,7 +79,7 @@ test_running_docker()
     DOCKER_HOST="tcp://$SLIRP_HOST:2375"
     SLIRP_PORTS="2375 8000 $(seq 49153 49253)"
 
-    ./run -d docker -d -D -H tcp://0.0.0.0:2375 &
+    sudo ./run -d docker -d -D -H tcp://0.0.0.0:2375 &
     while ! docker info; do sleep 10; done
 
     local exit_code="$?"
