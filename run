@@ -187,7 +187,7 @@ echo "$CMD" > "$LOGDIR/cmd"
 	STDOUT=/dev/null
 	STDERR=/dev/null
 	touch $LOGDIR/output
-	if [ "$VERBOSE" = 1 ]; then
+	if [ "${VERBOSE:-0}" = 1 ]; then
 		tail -f $LOGDIR/output &
 	fi
 	TAILPID=$!
