@@ -1,21 +1,151 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-REQUIREMENTS="/sbin/ip /usr/bin/slirp-fullbolt"
-for R in $REQUIREMENTS
-do
-	[ -x "$R" ] || {
-		echo "Requirement $R not found. Aborting."
-		exit 200
-	}
+### Configuration
+#####################################################################
+
+# Environment variables and their defaults
+LOG_LEVEL="${LOG_LEVEL:-7}" # 7 = debug -> 0 = emergency
+
+# Commandline options. This defines the usage page, and is used to parse cli
+# opts & defaults from. The parsing is unforgiving so be precise in your syntax
+read -r -d '' usage <<-'EOF'
+  -d         Enables debug mode
+  -h         This page
+EOF
+
+INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
+REQUIREMENTS="/sbin/ip /usr/bin/slirp-fullbolt $INITDIR/uml"
+CMD="true"
+LOGDIR="/tmp/log.$$"
+
+### Functions
+#####################################################################
+
+function _fmt ()      {
+	local color="\033[0m"
+	local color_reset="\033[0m"
+	case "${1}" in
+		emergency) 	color="\033[1;31m";;
+		alert) 			color="\033[0;31m";;
+		critical) 	color="\033[0;31m";;
+		error) 			color="\033[0;31m";;
+		warning) 		color="\033[0;33m";;
+		notice) 		color="\033[0;32m";;
+		info) 			color="\033[0;34m";;
+		debug) 			color="\033[1;30m";;
+		*) 					color="\033[0;30m";;
+	esac
+	lvl=$(echo "${1:0:5}" | tr "[:lower:]" "[:upper:]")
+	# remove color formatting if colors are not supported
+	if [ "0$(tput colors 2> /dev/null)" -lt 8 ]; then
+		# Don't use colors on pipes or non-recognized terminals
+		color=""; color_reset=""
+	fi
+	echo -e "$(date +"%Y-%m-%d %H:%M:%S") ${color}$(printf "[%5s]" "${lvl}")${color_reset}";
+}
+emergency() {                              echo "$(_fmt emergency) ${*}" 1>&2 || true; exit 1; }
+alert()     { ([ "${LOG_LEVEL}" -ge 1 ] && echo "$(_fmt alert) ${*}" 1>&2) 		|| true; }
+critical()  { ([ "${LOG_LEVEL}" -ge 2 ] && echo "$(_fmt critical) ${*}" 1>&2) || true; }
+error()     { ([ "${LOG_LEVEL}" -ge 3 ] && echo "$(_fmt error) ${*}" 1>&2) 		|| true; }
+warning()   { ([ "${LOG_LEVEL}" -ge 4 ] && echo "$(_fmt warning) ${*}" 1>&2) 	|| true; }
+notice()    { ([ "${LOG_LEVEL}" -ge 5 ] && echo "$(_fmt notice) ${*}" 1>&2) 	|| true; }
+info()      { ([ "${LOG_LEVEL}" -ge 6 ] && echo "$(_fmt info) ${*}" 1>&2) 		|| true; }
+debug()     { ([ "${LOG_LEVEL}" -ge 7 ] && echo "$(_fmt debug) ${*}" 1>&2) 		|| true; }
+
+help() {
+  echo "" 1>&2
+  echo " ${*}" 1>&2
+  echo "" 1>&2
+  echo "  ${usage}" 1>&2
+  echo "" 1>&2
+  exit 1
+}
+
+cleanup_before_exit() {
+  debug "Deleting $LOGDIR"
+  # print contents of all logdir files
+  find "$LOGDIR" -maxdepth 1 -type f -exec echo -e "\n\nDisplaying contents of {}\n=========================================" \; -exec cat {} \;
+  # remove the temporary log directory
+  rm -rf "$LOGDIR"
+}
+trap cleanup_before_exit EXIT
+
+
+### Parse commandline options
+#####################################################################
+
+# Translate usage string -> getopts arguments, and set $arg_<flag> defaults
+while read line; do
+  opt="$(echo "${line}" |awk '{print $1}' |sed -e 's#^-##')"
+  if ! echo "${line}" |egrep '\[.*\]' >/dev/null 2>&1; then
+    init="0" # it's a flag. init with 0
+  else
+    opt="${opt}:" # add : if opt has arg
+    init=""  # it has an arg. init with ""
+  fi
+  opts="${opts}${opt}"
+
+  varname="arg_${opt:0:1}"
+  if ! echo "${line}" |egrep '\. Default=' >/dev/null 2>&1; then
+    eval "${varname}=\"${init}\""
+  else
+    match="$(echo "${line}" |sed 's#^.*Default=\(\)#\1#g')"
+    eval "${varname}=\"${match}\""
+  fi
+done <<< "${usage}"
+
+# Reset in case getopts has been used previously in the shell.
+OPTIND=1
+
+# Overwrite $arg_<flag> defaults with the actual CLI options
+while getopts "${opts}" opt; do
+  line="$(echo "${usage}" |grep "\-${opt}")"
+
+
+  [ "${opt}" = "?" ] && help "Invalid use of script: ${*} "
+  varname="arg_${opt:0:1}"
+  default="${!varname}"
+
+  value="${OPTARG}"
+  if [ -z "${OPTARG}" ] && [ "${default}" = "0" ]; then
+    value="1"
+  fi
+
+  eval "${varname}=\"${value}\""
+  debug "cli arg ${varname} = ($default) -> ${!varname}"
 done
 
-if [ "$2" ]
-then
-	# shift
-	echo "Extraneous arguments: $*"
-	echo "Try to enclose them within quotes?"
-	# exit 201
+shift $((OPTIND-1))
+
+[ "$1" = "--" ] && shift
+
+
+### Switches (like -d for debugmode, -h for showing helppage)
+#####################################################################
+
+# debug mode
+if [ "${arg_d}" = "1" ]; then
+  # set -o xtrace
+  LOG_LEVEL="7"
 fi
+
+# help mode
+if [ "${arg_h}" = "1" ]; then
+  # Help exists with code 1
+  help "Help using ${0}"
+fi
+
+
+### Validation (decide what's required for running your script and error out)
+#####################################################################
+
+for R in $REQUIREMENTS; do
+	if [ ! -x "$R" ]; then
+		emergency "Checking requirement $R... Not found. Aborting"
+	else
+		debug "Checking requirement $R... Found"
+	fi
+done
 
 if [ -n "$SLIRP_PORTS" ] && [ -z "$HOST_IP" ]
 then
@@ -64,4 +194,4 @@ STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
 [ "$DEBUG" ] || rm -rf "$LOGDIR"
 [ "$STATUS" ] && exit "$STATUS"
-exit 300
+exit 255
