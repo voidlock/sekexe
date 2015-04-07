@@ -213,8 +213,8 @@ INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 	mem="$(grep "MemTotal" "/proc/meminfo" | awk '{ print $2 }')K" \
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
 	init="$INITDIR/init ${CMD}" \
-	TERM="$TERM" LOGDIR="$LOGDIR" \
-	<"$STDIN" >"$STDOUT" 2>"$STDERR"
+	TERM="$TERM" LOGDIR="$LOGDIR" #\
+	# <"$STDIN" >"$STDOUT" 2>"$STDERR"
 
 STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
