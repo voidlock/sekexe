@@ -62,11 +62,11 @@ help() {
 }
 
 cleanup_before_exit() {
-  debug "Deleting $LOGDIR"
   # print contents of all logdir files
-  find "$LOGDIR" -maxdepth 1 -type f -exec echo -e "\n\nDisplaying contents of {}\n=========================================" \; -exec cat {} \;
+  find "$LOGDIR" -maxdepth 1 -type f -exec echo -e "\nDisplaying contents of {}\n=========================================" \; -exec cat {} \;
   # remove the temporary log directory
-  rm -rf "$LOGDIR" 2> "/dev/null"
+  debug "Deleting $LOGDIR"
+  rm -rf "$LOGDIR" 2> /dev/null
 }
 trap cleanup_before_exit EXIT
 
@@ -164,8 +164,8 @@ CMD="${*}"
 ### Runtime
 #####################################################################
 
-LOGDIR=/tmp/log.$$
-mkdir $LOGDIR
+# LOGDIR=/tmp/log.$$
+# mkdir $LOGDIR
 
 if [ "$1" ]
 then
@@ -187,14 +187,17 @@ else
 	TAILPID=""
 fi
 
-cat "/etc/resolv.conf" > "$LOGDIR/resolv.conf"
-
-echo "${CMD}" > $LOGDIR/cmd
+# Setup logging directory and files
+debug "Preparing log directory: ${LOGDIR}"
+mkdir -p "${LOGDIR}"
+cp "/etc/resolv.conf" "${LOGDIR}/resolv.conf"
+echo "${CMD}" > "${LOGDIR}/cmd"
 
 # Execute `$CMD` in User-Mode Linux
 debug "Going to execute command: ${CMD}"
 INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
-"$INITDIR/uml" quiet mem=512m rootfstype=hostfs rootflags=/ ro \
+"$INITDIR/uml" quiet rootfstype=hostfs rootflags=/ ro \
+	mem="$(grep "MemTotal" "/proc/meminfo" | awk '{ print $2 }')K" \
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
 	init="$INITDIR/init ${CMD}" LOGDIR="$LOGDIR" \
 	<"$STDIN" >"$STDOUT" 2>"$STDERR"
