@@ -17,7 +17,6 @@ INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 REQUIREMENTS="/sbin/ip /usr/bin/slirp-fullbolt $INITDIR/uml"
 CMD="true"
 LOGDIR="/tmp/log.$$"
-PIDS=()
 
 ### Functions
 #####################################################################
@@ -68,8 +67,6 @@ cleanup_before_exit() {
   # remove the temporary log directory
   debug "Deleting $LOGDIR"
   rm -rf "$LOGDIR" 2> /dev/null
-  # killing auxilary processes
-  kill "${PIDS[@]}"
 }
 trap cleanup_before_exit EXIT
 
@@ -183,27 +180,27 @@ mkdir -p "${LOGDIR}"
 cp "/etc/resolv.conf" "${LOGDIR}/resolv.conf"
 echo "${CMD}" > "${LOGDIR}/cmd"
 
-if [ "$1" ]; then
-	STDIN=/dev/null
-	STDOUT=/dev/null
-	STDERR=/dev/null
-	touch $LOGDIR/stdout
-	touch $LOGDIR/stderr
-	# if [ "$VERBOSE" = 1 ]; then
-	tail -f $LOGDIR/stdout &
-	PIDS+=("$!")
-	tail -f $LOGDIR/stderr &
-	PIDS+=("$!")
-	# fi
-	# TAILPID=$!
-	# trap '' TERM
-else
-	# CMD=/bin/bash
-	STDIN=/dev/stdin
-	STDOUT=/dev/stdout
-	STDERR=/dev/stderr
-	TAILPID=""
-fi
+# if [ "$1" ]; then
+# 	STDIN=/dev/null
+# 	STDOUT=/dev/null
+# 	STDERR=/dev/null
+# 	touch $LOGDIR/stdout
+# 	touch $LOGDIR/stderr
+# 	# if [ "$VERBOSE" = 1 ]; then
+# 	tail -f $LOGDIR/stdout &
+# 	PIDS+=("$!")
+# 	tail -f $LOGDIR/stderr &
+# 	PIDS+=("$!")
+# 	# fi
+# 	# TAILPID=$!
+# 	# trap '' TERM
+# else
+# 	# CMD=/bin/bash
+# 	STDIN=/dev/stdin
+# 	STDOUT=/dev/stdout
+# 	STDERR=/dev/stderr
+# 	TAILPID=""
+# fi
 
 # Execute `$CMD` in User-Mode Linux
 debug "Going to execute command: ${CMD}"
@@ -214,12 +211,7 @@ INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
 	init="$INITDIR/init ${CMD}" \
 	TERM="$TERM" LOGDIR="$LOGDIR"
-	<"$STDIN" >"$STDOUT" 2>"$STDERR"
-
-# Due to a weird behavior of usermodelinux, sometimes it will kill the
-# whole process group, and we won't have to kill tail. Duh.
-[ "$TAILPID" ] && [ -d /proc/$TAILPID ] &&
-	/bin/kill "$TAILPID" >"/dev/null" 2>"/dev/null"
+	# <"$STDIN" >"$STDOUT" 2>"$STDERR"
 
 STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
