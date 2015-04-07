@@ -189,9 +189,9 @@ echo "$CMD" > "$LOGDIR/cmd"
 	touch $LOGDIR/output
 	if [ "${VERBOSE:-0}" = 1 ]; then
 		tail -f $LOGDIR/output &
+		TAILPID=$!
+		trap '' TERM
 	fi
-	TAILPID=$!
-	trap '' TERM
 # else
 # 	# CMD=/bin/bash
 # 	STDIN=/dev/stdin
