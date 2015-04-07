@@ -191,6 +191,8 @@ cat "/etc/resolv.conf" > "$LOGDIR/resolv.conf"
 
 echo "${CMD}" > $LOGDIR/cmd
 
+# Execute `$CMD` in User-Mode Linux
+debug "Going to execute command: ${CMD}"
 INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 "$INITDIR/uml" quiet mem=512m rootfstype=hostfs rootflags=/ ro \
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
@@ -204,6 +206,7 @@ INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 
 STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
-[ "$DEBUG" ] || rm -rf "$LOGDIR"
 [ "$STATUS" ] && exit "$STATUS"
+
+# default to exit error
 exit 255
