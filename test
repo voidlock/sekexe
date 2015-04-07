@@ -1,12 +1,11 @@
 #!/bin/bash
 
 REQUIREMENTS="/usr/bin/shunit2 /bin/nc"
-for R in $REQUIREMENTS
-do
-	[ -x $R ] || {
-		echo "Requirement $R not found. Aborting."
-		exit 1
-	}
+for R in $REQUIREMENTS; do
+    if [ ! -x "$R" ]; then
+        echo "Checking requirement $R... Not found. Aborting"
+        exit 1
+    fi
 done
 
 handleSigTerm()
@@ -21,7 +20,7 @@ oneTimeSetUp()
 
 testSlirpRedirNeedsHostIp()
 {
-    HOST_IP='' SLIRP_PORTS=12345 ./run "true"
+    HOST_IP='' SLIRP_PORTS=12345 ./run -d "true"
 
     assertNotEquals "Providing SLIRP_PORTS should require HOST_IP" 0 $?
 }
@@ -33,7 +32,7 @@ testGuestReachableViaSlirp()
         grep 'inet addr' | awk -F: '{print $2}' | awk '{print $1}')
     port=12345
 
-    HOST_IP="$host_ip" SLIRP_PORTS=$port ./run "nc -l $port" &
+    HOST_IP="$host_ip" SLIRP_PORTS=$port ./run -d "nc -l $port" &
     UML_PID=$!
 
     # give uml a little time to start
@@ -48,28 +47,28 @@ testGuestReachableViaSlirp()
 
 test_true()
 {
-    ./run "true"
+    ./run -d true
     local exit_code="$?"
     assertEquals "Should exit with code 0" 0 $exit_code
 }
 
 test_false()
 {
-    ./run "false"
+    ./run -d false
     local exit_code="$?"
     assertEquals "Should exit with code 1" 1 $exit_code
 }
 
 test_exit_2()
 {
-    ./run "exit 2"
+    ./run -d exit 2
     local exit_code="$?"
     assertEquals "Should exit with code 2" 2 $exit_code
 }
 
 test_exit_25()
 {
-    ./run exit 25
+    ./run -d exit 25
     local exit_code="$?"
     assertEquals "Should exit with code 25" 25 $exit_code
 }

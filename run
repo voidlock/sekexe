@@ -4,7 +4,7 @@
 #####################################################################
 
 # Environment variables and their defaults
-LOG_LEVEL="${LOG_LEVEL:-7}" # 7 = debug -> 0 = emergency
+LOG_LEVEL="${LOG_LEVEL:-5}" # 7 = debug -> 0 = emergency
 
 # Commandline options. This defines the usage page, and is used to parse cli
 # opts & defaults from. The parsing is unforgiving so be precise in your syntax
@@ -17,6 +17,7 @@ INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 REQUIREMENTS="/sbin/ip /usr/bin/slirp-fullbolt $INITDIR/uml"
 CMD="true"
 LOGDIR="/tmp/log.$$"
+PIDS=()
 
 ### Functions
 #####################################################################
@@ -63,10 +64,12 @@ help() {
 
 cleanup_before_exit() {
   # print contents of all logdir files
-  find "$LOGDIR" -maxdepth 1 -type f -exec echo -e "\nDisplaying contents of {}\n=========================================" \; -exec cat {} \;
+  [ "${LOG_LEVEL}" -ge 7 ] && find "$LOGDIR" -maxdepth 1 -type f -exec echo -e "\nDisplaying contents of {}\n=========================================" \; -exec cat {} \;
   # remove the temporary log directory
   debug "Deleting $LOGDIR"
   rm -rf "$LOGDIR" 2> /dev/null
+  # killing auxilary processes
+  kill "$@"
 }
 trap cleanup_before_exit EXIT
 
@@ -164,34 +167,43 @@ CMD="${*}"
 ### Runtime
 #####################################################################
 
-# LOGDIR=/tmp/log.$$
-# mkdir $LOGDIR
+# Exit on error. Append ||true if you expect an error.
+# set -e is safer than #!/bin/bash -e because that is neutralised if
+# someone runs your script like `bash yourscript.sh`
+# set -o errexit
+# set -o nounset
 
-if [ "$1" ]
-then
-	# CMD="$*"
-	STDIN=/dev/null
-	STDOUT=/dev/null
-	STDERR=/dev/null
-	touch $LOGDIR/output
-	if [ "$VERBOSE" = 1 ]; then
-		tail -f $LOGDIR/output &
-	fi
-	TAILPID=$!
-	trap '' TERM
-else
-	CMD=/bin/bash
-	STDIN=/dev/stdin
-	STDOUT=/dev/stdout
-	STDERR=/dev/stderr
-	TAILPID=""
-fi
+# Bash will remember & return the highest exitcode in a chain of pipes.
+# This way you can catch the error in case mysqldump fails in `mysqldump |gzip`
+# set -o pipefail
 
 # Setup logging directory and files
 debug "Preparing log directory: ${LOGDIR}"
 mkdir -p "${LOGDIR}"
 cp "/etc/resolv.conf" "${LOGDIR}/resolv.conf"
 echo "${CMD}" > "${LOGDIR}/cmd"
+
+if [ "$1" ]; then
+	STDIN=/dev/null
+	STDOUT=/dev/null
+	STDERR=/dev/null
+	touch $LOGDIR/stdout
+	touch $LOGDIR/stderr
+	# if [ "$VERBOSE" = 1 ]; then
+	tail -f $LOGDIR/stdout &
+	PIDS+=($!)
+	tail -f $LOGDIR/stderr &
+	PIDS+=($!)
+	# fi
+	# TAILPID=$!
+	# trap '' TERM
+else
+	# CMD=/bin/bash
+	STDIN=/dev/stdin
+	STDOUT=/dev/stdout
+	STDERR=/dev/stderr
+	TAILPID=""
+fi
 
 # Execute `$CMD` in User-Mode Linux
 debug "Going to execute command: ${CMD}"
@@ -202,7 +214,7 @@ INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
 	init="$INITDIR/init ${CMD}" \
 	TERM="$TERM" LOGDIR="$LOGDIR"
-	# <"$STDIN" >"$STDOUT" 2>"$STDERR"
+	<"$STDIN" >"$STDOUT" 2>"$STDERR"
 
 # Due to a weird behavior of usermodelinux, sometimes it will kill the
 # whole process group, and we won't have to kill tail. Duh.
