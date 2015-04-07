@@ -73,21 +73,4 @@ test_exit_25()
     assertEquals "Should exit with code 25" 25 $exit_code
 }
 
-test_running_docker()
-{
-    export SLIRP_HOST=$(/sbin/ifconfig venet0:0 | grep 'inet addr' | awk -F: '{print $2}' | awk '{print $1}')
-    export DOCKER_HOST="tcp://$SLIRP_HOST:2375"
-    export SLIRP_PORTS="2375 8000 $(seq 49153 49253)"
-
-    sudo ./run -d docker -d -D -H tcp://0.0.0.0:2375 &
-    while ! docker info; do sleep 10; done
-
-    local exit_code="$?"
-    unset SLIRP_HOST
-    unset SLIRP_PORTS
-    unset DOCKER_HOST
-
-    assertEquals "Should successful connect to docker" 0 $exit_code
-}
-
 . /usr/bin/shunit2
