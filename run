@@ -66,7 +66,7 @@ cleanup_before_exit() {
   # print contents of all logdir files
   find "$LOGDIR" -maxdepth 1 -type f -exec echo -e "\n\nDisplaying contents of {}\n=========================================" \; -exec cat {} \;
   # remove the temporary log directory
-  rm -rf "$LOGDIR"
+  rm -rf "$LOGDIR" 2> "/dev/null"
 }
 trap cleanup_before_exit EXIT
 
@@ -147,18 +147,29 @@ for R in $REQUIREMENTS; do
 	fi
 done
 
-if [ -n "$SLIRP_PORTS" ] && [ -z "$HOST_IP" ]
-then
-    echo "The HOST_IP must be defined to setup redirects with SLIRP_PORTS."
-    exit 202
+# backwards compatability...
+if [ ! -z "$HOST_IP" ]; then
+	warning "DEPRECATED USE OF ENVIRONMENT VARIABLE, CONSIDER SWITCHING TO SLIRP_HOST AS SOON AS POSSIBLE."
+	SLIRP_HOST="$HOST_IP"
 fi
+
+if [ -n "$SLIRP_PORTS" ] && [ -z "$SLIRP_HOST" ]; then
+  emergency "The HOST_IP must be defined to setup redirects with SLIRP_PORTS."
+  exit 255
+fi
+
+# Save the rest of the arguments as command to execute
+CMD="${*}"
+
+### Runtime
+#####################################################################
 
 LOGDIR=/tmp/log.$$
 mkdir $LOGDIR
 
 if [ "$1" ]
 then
-	CMD="$*"
+	# CMD="$*"
 	STDIN=/dev/null
 	STDOUT=/dev/null
 	STDERR=/dev/null
@@ -169,7 +180,7 @@ then
 	TAILPID=$!
 	trap '' TERM
 else
-	CMD=/bin/bash
+	# CMD=/bin/bash
 	STDIN=/dev/stdin
 	STDOUT=/dev/stdout
 	STDERR=/dev/stderr
@@ -179,6 +190,7 @@ fi
 cat "/etc/resolv.conf" > "$LOGDIR/resolv.conf"
 
 echo "$CMD" > $LOGDIR/cmd
+
 INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 "$INITDIR/uml" quiet mem=512m rootfstype=hostfs rootflags=/ ro \
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
