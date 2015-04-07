@@ -169,7 +169,7 @@ CMD="${*}"
 
 if [ "$1" ]
 then
-	CMD="$*"
+	# CMD="$*"
 	STDIN=/dev/null
 	STDOUT=/dev/null
 	STDERR=/dev/null
