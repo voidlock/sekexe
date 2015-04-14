@@ -63,13 +63,14 @@ help() {
 }
 
 cleanup_before_exit() {
+  warning "cleaning up"
   # print contents of all logdir files
   [ "${LOG_LEVEL}" -ge 7 ] && find "$LOGDIR" -maxdepth 1 -type f -exec echo -e "\nDisplaying contents of {}\n=========================================" \; -exec cat {} \;
   # remove the temporary log directory
   debug "Deleting $LOGDIR"
-  rm -rf "$LOGDIR" 2> /dev/null
+  rm -rf "$LOGDIR" 2> "/dev/null"
   # kill auxillary processes
-  kill "${PIDS[@]}"
+  [ "${#PIDS[@]}" -gt "0" ] && kill "${PIDS[@]}"
 }
 trap cleanup_before_exit EXIT
 
@@ -170,7 +171,7 @@ CMD="${*}"
 # Exit on error. Append ||true if you expect an error.
 # set -e is safer than #!/bin/bash -e because that is neutralised if
 # someone runs your script like `bash yourscript.sh`
-# set -o errexit
+set -o errexit
 # set -o nounset
 
 # Bash will remember & return the highest exitcode in a chain of pipes.
@@ -184,16 +185,16 @@ cp "/etc/resolv.conf" "${LOGDIR}/resolv.conf"
 echo "${CMD}" > "${LOGDIR}/cmd"
 
 # if [ "$1" ]; then
-	STDIN=/dev/stdin
-	STDOUT=/dev/null
-	STDERR=/dev/null
-	touch $LOGDIR/stdout
-	touch $LOGDIR/stderr
+	# STDIN=/dev/stdin
+	# STDOUT=/dev/null
+	# STDERR=/dev/null
+	# touch $LOGDIR/stdout
+	# touch $LOGDIR/stderr
 # 	# if [ "$VERBOSE" = 1 ]; then
-	tail -f $LOGDIR/stdout &
-	PIDS+=("$!")
-	tail -f $LOGDIR/stderr &
-	PIDS+=("$!")
+	# tail -f $LOGDIR/stdout &
+	# PIDS+=("$!")
+	# tail -f $LOGDIR/stderr &
+	# PIDS+=("$!")
 # 	# fi
 # 	# TAILPID=$!
 # 	# trap '' TERM
@@ -205,17 +206,20 @@ echo "${CMD}" > "${LOGDIR}/cmd"
 # 	TAILPID=""
 # fi
 
+trap 'echo "received SIGINT"' INT
+trap 'echo "received SIGTERM"' TERM
+trap 'echo "received SIGEXIT"' EXIT
+trap 'echo "received SIGHUP"' HUP
+
 # Execute `$CMD` in User-Mode Linux
-# root="/dev/root" rootflags="/" rootfstype="hostfs" rw \
 debug "Going to execute command: ${CMD}"
 INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
-"$INITDIR/uml" quiet \
-  rootfstype="hostfs" rootflags="/" ro \
+"$INITDIR/linux" \
+  rootflags="/" rootfstype="hostfs" rw \
 	mem="$(grep "MemTotal" "/proc/meminfo" | awk '{ print $2 }')K" \
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
-	init="$INITDIR/init ${CMD}" \
-	TERM="$TERM" LOGDIR="$LOGDIR" #\
-	# <"$STDIN" >"$STDOUT" 2>"$STDERR"
+	"init=$INITDIR/init" \
+	TERM="$TERM" LOGDIR="$LOGDIR" "CMD=\"${CMD}\""
 
 STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
