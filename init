@@ -121,3 +121,4 @@ info "Number of loop devices: $(find /dev/loop* | wc -l)"
 /usr/bin/env sh -c "${CMD}"
 # preserve commands exit code
 echo $? >/var/log/status
+warning "UML exit status was $(cat /var/log/status)"

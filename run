@@ -72,7 +72,7 @@ cleanup_before_exit() {
   # kill auxillary processes
   [ "${#PIDS[@]}" -gt "0" ] && kill "${PIDS[@]}"
 }
-trap cleanup_before_exit EXIT
+# trap cleanup_before_exit EXIT
 
 
 ### Parse commandline options
@@ -206,15 +206,11 @@ echo "${CMD}" > "${LOGDIR}/cmd"
 # 	TAILPID=""
 # fi
 
-trap 'echo "received SIGINT"' INT
-trap 'echo "received SIGTERM"' TERM
-trap 'echo "received SIGEXIT"' EXIT
-trap 'echo "received SIGHUP"' HUP
 
 # Execute `$CMD` in User-Mode Linux
 debug "Going to execute command: ${CMD}"
 INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
-"$INITDIR/uml" \
+"$INITDIR/uml" quiet \
   rootflags="/" rootfstype="hostfs" rw \
 	mem="$(grep "MemTotal" "/proc/meminfo" | awk '{ print $2 }')K" \
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
@@ -223,6 +219,7 @@ INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 
 STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
+warning "RUN SCRIPT: Found exit status to be: $STATUS"
 [ "$STATUS" ] && exit "$STATUS"
 
 # default to exit error

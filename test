@@ -1,6 +1,6 @@
 #!/bin/bash
 
-REQUIREMENTS="/usr/bin/shunit2 /bin/nc"
+REQUIREMENTS="/usr/bin/shunit2 /bin/nc /usr/bin/docker"
 for R in $REQUIREMENTS; do
     if [ ! -x "$R" ]; then
         echo "Checking requirement $R... Not found. Aborting"
@@ -18,12 +18,12 @@ oneTimeSetUp()
     trap "handleSigTerm" TERM
 }
 
-# testSlirpRedirNeedsHostIp()
-# {
-#     HOST_IP='' SLIRP_PORTS=12345 ./run "true"
+testSlirpRedirNeedsHostIp()
+{
+    HOST_IP='' SLIRP_PORTS=12345 ./run "true"
 
-#     assertNotEquals "Providing SLIRP_PORTS should require HOST_IP" 0 $?
-# }
+    assertNotEquals "Providing SLIRP_PORTS should require HOST_IP" 0 $?
+}
 
 testGuestReachableViaSlirp()
 {
@@ -44,32 +44,71 @@ testGuestReachableViaSlirp()
     /bin/kill "$UML_PID" >/dev/null 2>/dev/null
 }
 
-# test_true()
-# {
-#     ./run true
-#     local exit_code="$?"
-#     assertEquals "Should exit with code 0" 0 $exit_code
-# }
+testDockerReachableViaSlirp()
+{
+    # for an address to bind to, try both eth0 and venet0:0 (used by travis ci)
+    local host_ip=$( (/sbin/ifconfig eth0 || /sbin/ifconfig venet0:0) | \
+        grep 'inet addr' | awk -F: '{print $2}' | awk '{print $1}')
+    local port="2375 9090"
 
-# test_false()
-# {
-#     ./run false
-#     local exit_code="$?"
-#     assertEquals "Should exit with code 1" 1 $exit_code
-# }
+    SLIRP_HOST="$host_ip" SLIRP_PORTS=$port ./run 'docker -d -H tcp://0.0.0.0:2375' &
+    UML_PID=$!
 
-# test_exit_2()
-# {
-#     ./run exit 2
-#     local exit_code="$?"
-#     assertEquals "Should exit with code 2" 2 $exit_code
-# }
+    # wait for docker daemon to start
+    while ! docker -H "tcp://$host_ip:2375" info &> /dev/null; do sleep 1; done
 
-# test_exit_25()
-# {
-#     ./run exit 25
-#     local exit_code="$?"
-#     assertEquals "Should exit with code 25" 25 $exit_code
-# }
+    # download and start ubuntu 14.04 image and run a `nc` server
+    docker -H "tcp://$host_ip:2375" pull ubuntu:14.04
+    docker -H "tcp://$host_ip:2375" run -d -p 9090:9090 ubuntu:14.04 /bin/nc -l 9090
+
+    # scan for `nc` listening server
+    nc -w 5 -z "$host_ip" "9090"
+
+    assertEquals "Service should be reachable via slirp" 0 $?
+
+    /bin/kill "$UML_PID" >/dev/null 2>/dev/null
+}
+
+test_true()
+{
+    ./run true
+    local exit_code="$?"
+    assertEquals "Should exit with code 0" 0 $exit_code
+}
+
+test_false()
+{
+    ./run false
+    local exit_code="$?"
+    assertEquals "Should exit with code 1" 1 $exit_code
+}
+
+test_exit_1()
+{
+    ./run exit 1
+    local exit_code="$?"
+    assertEquals "Should exit with code 1" 1 $exit_code
+}
+
+test_exit_2()
+{
+    ./run exit 2
+    local exit_code="$?"
+    assertEquals "Should exit with code 2" 2 $exit_code
+}
+
+test_exit_254()
+{
+    ./run exit 254
+    local exit_code="$?"
+    assertEquals "Should exit with code 254" 254 $exit_code
+}
+
+test_exit_255()
+{
+    ./run exit 255
+    local exit_code="$?"
+    assertEquals "Should exit with code 255" 255 $exit_code
+}
 
 . /usr/bin/shunit2
