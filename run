@@ -17,7 +17,6 @@ INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
 REQUIREMENTS="/sbin/ip /usr/bin/slirp-fullbolt $INITDIR/uml"
 CMD="true"
 LOGDIR="/tmp/log.$$"
-PIDS=()
 
 ### Functions
 #####################################################################
@@ -42,7 +41,7 @@ function _fmt ()      {
 		# Don't use colors on pipes or non-recognized terminals
 		color=""; color_reset=""
 	fi
-	echo -e "$(date +"%Y-%m-%d %H:%M:%S") ${color}$(printf "[%5s]" "${lvl}")${color_reset}";
+	echo -e "$(date +"%Y-%m-%d %H:%M:%S") $(hostname) ${color}$(printf "[%5s]" "${lvl}")${color_reset}";
 }
 emergency() {                              echo "$(_fmt emergency) ${*}" 1>&2 || true; exit 1; }
 alert()     { ([ "${LOG_LEVEL}" -ge 1 ] && echo "$(_fmt alert) ${*}" 1>&2) 		|| true; }
@@ -63,16 +62,18 @@ help() {
 }
 
 cleanup_before_exit() {
-  warning "cleaning up"
+  # preserve earlier exit code
+  local exit_code="$?"
+  debug "cleaning up"
   # print contents of all logdir files
-  [ "${LOG_LEVEL}" -ge 7 ] && find "$LOGDIR" -maxdepth 1 -type f -exec echo -e "\nDisplaying contents of {}\n=========================================" \; -exec cat {} \;
+  [ "${LOG_LEVEL}" -ge 7 ] && tail $LOGDIR/*
   # remove the temporary log directory
   debug "Deleting $LOGDIR"
   rm -rf "$LOGDIR" 2> "/dev/null"
-  # kill auxillary processes
-  [ "${#PIDS[@]}" -gt "0" ] && kill "${PIDS[@]}"
+  # return previous exit code
+  return $exit_code
 }
-# trap cleanup_before_exit EXIT
+trap cleanup_before_exit EXIT
 
 
 ### Parse commandline options
@@ -184,42 +185,43 @@ mkdir -p "${LOGDIR}"
 cp "/etc/resolv.conf" "${LOGDIR}/resolv.conf"
 echo "${CMD}" > "${LOGDIR}/cmd"
 
-# if [ "$1" ]; then
-	# STDIN=/dev/stdin
-	# STDOUT=/dev/null
-	# STDERR=/dev/null
-	# touch $LOGDIR/stdout
-	# touch $LOGDIR/stderr
-# 	# if [ "$VERBOSE" = 1 ]; then
-	# tail -f $LOGDIR/stdout &
-	# PIDS+=("$!")
-	# tail -f $LOGDIR/stderr &
-	# PIDS+=("$!")
-# 	# fi
-# 	# TAILPID=$!
-# 	# trap '' TERM
-# else
-# 	# CMD=/bin/bash
-# 	STDIN=/dev/stdin
-# 	STDOUT=/dev/stdout
-# 	STDERR=/dev/stderr
-# 	TAILPID=""
-# fi
-
+if [ "$*" ]; then
+  STDIN=/dev/null
+  STDOUT=/dev/null
+  STDERR=/dev/null
+  touch $LOGDIR/stdout
+  touch $LOGDIR/stderr
+  tail -qf $LOGDIR/stdout $LOGDIR/stderr &
+  TAILPID=$!
+  trap '' TERM
+else
+  CMD=/bin/bash
+  STDIN=/dev/stdin
+  STDOUT=/dev/stdout
+  STDERR=/dev/stderr
+  TAILPID=""
+fi
 
 # Execute `$CMD` in User-Mode Linux
-debug "Going to execute command: ${CMD}"
+debug "Going to execute following command in UML: ${CMD}"
 INITDIR="$(readlink --canonicalize "$(dirname "$0")")"
-"$INITDIR/uml" quiet \
+"$INITDIR/uml" quiet single \
   rootflags="/" rootfstype="hostfs" rw \
+  cgroup_enable=memory swapaccount=1 \
 	mem="$(grep "MemTotal" "/proc/meminfo" | awk '{ print $2 }')K" \
 	eth0="slirp,,$INITDIR/slirp-wrapper" \
-	"init=$INITDIR/init" \
-	TERM="$TERM" LOGDIR="$LOGDIR" "CMD=\"${CMD}\""
+	init="$INITDIR/init" \
+	TERM="$TERM" LOGDIR="$LOGDIR" "CMD=\"$CMD\"" CWD="$(pwd)" \
+  <$STDIN >$STDOUT 2>$STDERR
+
+# Due to a weird behavior of usermodelinux, sometimes it will kill the
+# whole process group, and we won't have to kill tail. Duh.
+[ "$TAILPID" ] && [ -d "/proc/$TAILPID" ] &&
+  /bin/kill "$TAILPID" >"/dev/null" 2>"/dev/null"
 
 STATUS=""
 [ -f "$LOGDIR/status" ] && STATUS="$(cat $LOGDIR/status)"
-warning "RUN SCRIPT: Found exit status to be: $STATUS"
+debug "UML exit code was $STATUS"
 [ "$STATUS" ] && exit "$STATUS"
 
 # default to exit error

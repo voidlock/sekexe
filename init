@@ -1,52 +1,7 @@
 #!/usr/bin/env bash
 
-### Configuration
-#####################################################################
-
-# Environment variables and their defaults
-LOG_LEVEL="${LOG_LEVEL:-7}" # 7 = debug -> 0 = emergency
-
-
-### Functions
-#####################################################################
-
-function _fmt ()      {
-	local color="\033[0m"
-	local color_reset="\033[0m"
-	case "${1}" in
-		emergency) 	color="\033[1;31m";;
-		alert) 			color="\033[0;31m";;
-		critical) 	color="\033[0;31m";;
-		error) 			color="\033[0;31m";;
-		warning) 		color="\033[1;33m";;
-		notice) 		color="\033[0;32m";;
-		info) 			color="\033[0;34m";;
-		debug) 			color="\033[1;30m";;
-		*) 					color="\033[0;30m";;
-	esac
-	lvl=$(echo "${1:0:5}" | tr "[:lower:]" "[:upper:]")
-	# remove color formatting if colors are not supported
-	if [ "0$(tput colors 2> /dev/null)" -lt 8 ]; then
-		# Don't use colors on pipes or non-recognized terminals
-		color=""; color_reset=""
-	fi
-	echo -e "$(date +"%Y-%m-%d %H:%M:%S") ${color}$(printf "[%5s]" "${lvl}")${color_reset}";
-}
-emergency() {                              echo "$(_fmt emergency) ${*}" 1>&2 || true; }
-alert()     { ([ "${LOG_LEVEL}" -ge 1 ] && echo "$(_fmt alert) ${*}" 1>&2) 		|| true; }
-critical()  { ([ "${LOG_LEVEL}" -ge 2 ] && echo "$(_fmt critical) ${*}" 1>&2) || true; }
-error()     { ([ "${LOG_LEVEL}" -ge 3 ] && echo "$(_fmt error) ${*}" 1>&2) 		|| true; }
-warning()   { ([ "${LOG_LEVEL}" -ge 4 ] && echo "$(_fmt warning) ${*}" 1>&2) 	|| true; }
-notice()    { ([ "${LOG_LEVEL}" -ge 5 ] && echo "$(_fmt notice) ${*}" 1>&2) 	|| true; }
-info()      { ([ "${LOG_LEVEL}" -ge 6 ] && echo "$(_fmt info) ${*}" 1>&2) 		|| true; }
-debug()     { ([ "${LOG_LEVEL}" -ge 7 ] && echo "$(_fmt debug) ${*}" 1>&2) 		|| true; }
-
-
-### Runtime
-#####################################################################
-
 # go back to where we were invoked
-cd "$WORKDIR"
+cd "$CWD"
 
 save_and_shutdown() {
   # force clean shutdown
@@ -80,22 +35,26 @@ mount -t tmpfs none "/var/run"
 # takes the pain out of cgroups
 cgroups-mount
 
-# some storage for docker
+# var/lib storage for docker if accessible use the host directories
 mkdir -p "/var/lib/docker"
-# mount none "/var/lib/docker" -t hostfs -o "/var/lib/docker"
-mount -t tmpfs -o size=8g tmpfs "/var/lib/docker"
+if [ ! -w "/var/lib/docker" ]; then
+	echo "/var/lib/docker is not writable, mounting temporary filesystem" > /dev/stderr
+	mount -t tmpfs -o size=8g tmpfs "/var/lib/docker"
+fi
 
+# etc storage for docker if accessible use the host directories
 mkdir -p "/etc/docker"
-# mount none "/etc/docker" -t hostfs -o "/etc/docker"
-mount -t tmpfs -o size=10m tmpfs "/etc/docker"
+if [ ! -w "/etc/docker" ]; then
+	echo "/etc/docker is not writable, mounting temporary filesystem" > /dev/stderr
+	mount -t tmpfs -o size=10m tmpfs "/etc/docker"
+fi
 
 export DOCKER_CERT_PATH=/var/lib/docker
 
-# mkdir -p "/etc/docker"
-# mount none "/etc/docker" -t hostfs -o "/etc/docker" \
-# 	|| mount -t tmpfs -o size=8g tmpfs "/etc/docker"
-
-mount -t hostfs -o "$LOGDIR" none "/var/log"
+# mount logdir if existing
+if [ "$LOGDIR" ]; then
+	mount -t hostfs -o "$LOGDIR" none "/var/log"
+fi
 
 # configure networking
 ip addr add 127.0.0.1 dev lo
@@ -116,9 +75,6 @@ fi
 [ -f "/var/log/stderr" ] && exec 2>> "/var/log/stderr"
 
 # execute the command
-debug "going to run command $*"
-info "Number of loop devices: $(find /dev/loop* | wc -l)"
 /usr/bin/env sh -c "${CMD}"
 # preserve commands exit code
-echo $? >/var/log/status
-warning "UML exit status was $(cat /var/log/status)"
+echo "$?" > "/var/log/status"
