@@ -4,18 +4,19 @@ SLIRP_OPTIONS=()
 
 # backwards compatability
 if [ ! -z "$HOST_IP" ]; then
-	echo "DEPRECATED USE OF ENVIRONMENT VARIABLE, CONSIDER SWITCHING TO SLIRP_HOST AS SOON AS POSSIBLE."
-	SLIRP_HOST="$HOST_IP"
+  echo "DEPRECATED USE OF ENVIRONMENT VARIABLE, CONSIDER SWITCHING TO SLIRP_HOST AS SOON AS POSSIBLE."
+  SLIRP_HOST="$HOST_IP"
 fi
 
 if [ ! -z "$SLIRP_HOST" ]; then
-	SLIRP_OPTIONS+=("host addr $SLIRP_HOST")
+  SLIRP_OPTIONS+=("host addr $SLIRP_HOST")
 fi
 
 if [ ! -z "$SLIRP_PORTS" ]; then
-	for i in $SLIRP_PORTS; do
-		SLIRP_OPTIONS+=("redir $i 10.1.1.1:$i")
-	done
+  IFS=',' read -a SLIRP_PORTS <<< "$SLIRP_PORTS"
+  for i in ${SLIRP_PORTS[@]}; do
+    SLIRP_OPTIONS+=("redir $i 10.1.1.1:$i")
+  done
 fi
 
 exec slirp-fullbolt "${SLIRP_OPTIONS[@]}" "$@"
